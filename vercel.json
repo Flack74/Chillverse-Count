@@ -1,0 +1,11 @@
+{
+  "builds": [
+    {
+      "src": "count.py",
+      "use": "@vercel/python"
+    }
+  ],
+  "env": {
+    "DISCORD_TOKEN": "@discord-token"
+  }
+}
