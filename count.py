@@ -3,11 +3,11 @@ import discord
 from discord.ext import commands
 from dotenv import load_dotenv
 import math
+import requests
+import time
 
 # Intents
 intents = discord.Intents.default()
-intents.messages = True
-intents.message_content = True
 
 # Bot setup
 bot = commands.Bot(command_prefix='!', intents=intents)
@@ -21,11 +21,51 @@ COUNTING_CHANNEL_ID = 1022075494100910160  # Replace with your actual channel ID
 # Last user who counted
 last_user_id = None
 
+# Function to handle rate limiting
+def handle_rate_limit(response):
+    if response.status_code == 429:
+        retry_after = response.headers.get('Retry-After')
+        if retry_after:
+            retry_after = int(retry_after)
+            print(f"Rate-limited. Retrying after {retry_after} seconds.")
+            time.sleep(retry_after)
+            return True  # Return True to indicate retrying
+    return False
+
+# Update bot status and bio
+async def update_bot_status_and_bio():
+    await bot.change_presence(
+        status=discord.Status.idle,
+        activity=discord.Game("Counting 📊")
+    )
+    print("Status updated to idle with activity.")
+    
+    url = "https://discord.com/api/v10/users/@me"
+    headers = {
+        "Authorization": f"Bot {os.getenv('DISCORD_TOKEN')}",
+        "Content-Type": "application/json"
+    }
+    data = {
+        "bio": "Made by Flack ✨🚀"
+    }
+
+    for _ in range(3):  # Retry up to 3 times
+        try:
+            response = requests.patch(url, json=data, headers=headers, timeout=10)
+            if handle_rate_limit(response):
+                continue  # Retry if rate-limited
+            response.raise_for_status()  # Raise exception for HTTP errors
+            print("Bio updated successfully!")
+            return  # Exit if bio update is successful
+        except requests.exceptions.RequestException as e:
+            print(f"Error updating bio: {e}")
+            break  # Stop retrying after failure
 
 @bot.event
 async def on_ready():
     print(f'Bot is online as {bot.user}')
-
+    # Update the status and bio when the bot is ready
+    await update_bot_status_and_bio()
 
 @bot.event
 async def on_message(message):
@@ -36,21 +76,26 @@ async def on_message(message):
         return
 
     try:
-        # Evaluate the message content
-        expression = message.content
-        result = eval(expression)  # Evaluate mathematical expressions
-        if not isinstance(result, (int, float)):  # Ensure the result is numeric
-            raise ValueError("Result is not numeric")
+        # Handle math expressions using eval (with safety)
+        if message.content.startswith('!calc'):
+            expression = message.content[6:].strip()  # Remove "!calc " from the start
+            try:
+                result = eval(expression)
+                await message.channel.send(f"Result of {expression}: {result}")
+            except Exception as e:
+                await message.channel.send(f"Error evaluating the expression: {e}")
+            return
 
-        num = int(result)  # Convert to an integer for comparison
+        # Check if the message content is numeric
+        num = int(message.content)  # Convert message content to an integer
 
         # Check if the user is allowed to count
         if message.author.id == last_user_id:
             if count > 0:
-                reduction = max(1, math.floor(count * 0.1))  # Ensure at least a reduction of 1
+                reduction = max(1, math.floor(count * 0.5))  # Reduce by 50%
                 count -= reduction  # Apply reduction
             else:
-                count = 0  # Reset to zero if count is already very low
+                count = 0  # Reset to zero if count is already low
             last_user_id = None  # Reset the last user
             await message.channel.send(
                 f"{message.author.mention}, you cannot count consecutively! The count is reduced to {count}. Start again from {count + 1}."
@@ -60,12 +105,12 @@ async def on_message(message):
         # Check if the number is correct
         if num == count + 1:
             count += 1
-            last_user_id = message.author.id
-            await message.add_reaction("✅")  # React with a checkmark
+            last_user_id = message.author.id 
+            await message.add_reaction('<:CheckChillversecount:1324017578821156874>')  # Using standard emoji as fallback
         else:
-            # Incorrect count: reduce by 10% or reset to 0
-            if count > 0:
-                reduction = max(1, math.floor(count * 0.1))  # Ensure at least a reduction of 1
+            # Incorrect count: reduce by 50% or reset to 0
+            if count > 10:
+                reduction = max(1, math.floor(count * 0.5))  # Reduce by 50%
                 count -= reduction  # Apply reduction
             else:
                 count = 0  # Reset to zero
@@ -73,10 +118,9 @@ async def on_message(message):
             await message.channel.send(
                 f"{message.author.mention} messed up! The count is reduced to {count}. Start again from {count + 1}."
             )
-    except (ValueError, SyntaxError):
-        # Silently ignore invalid or non-numeric messages
-        return
-
+    except ValueError:
+        # Silently ignore non-numeric messages
+        pass
 
 # Run the bot
 load_dotenv()
