@@ -4,7 +4,7 @@ Welcome to **Chillverse Count Bot** — a fun and interactive Discord bot for co
 
 ## Features 🌟
 - ➕ **Smart Counting:** Supports math expressions like `10+5/4` to validate inputs.
-- ⚠️ **Penalty System:** Reduces the count by **10%** (or resets to 0 if at the start) when someone messes up.
+- ⚠️ **Penalty System:** Reduces the count by **50%** (or resets to 0 if at the start) when someone messes up.
 - ⏳ **Turn-Based Rules:** Players can only count again after another user takes their turn.
 - ✅ **Reactions:** Adds reactions to indicate correct or incorrect counts.
 
