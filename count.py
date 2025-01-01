@@ -8,6 +8,7 @@ import time
 
 # Intents
 intents = discord.Intents.default()
+intents.message_content = True  # Enable message content intent
 
 # Bot setup
 bot = commands.Bot(command_prefix='!', intents=intents)
@@ -32,7 +33,7 @@ def handle_rate_limit(response):
             return True  # Return True to indicate retrying
     return False
 
-# Update bot status and bio
+# Update bot status and bio with better logging
 async def update_bot_status_and_bio():
     await bot.change_presence(
         status=discord.Status.idle,
@@ -49,8 +50,10 @@ async def update_bot_status_and_bio():
         "bio": "Made by Flack ✨🚀"
     }
 
+    # Retry logic for updating the bio
     for _ in range(3):  # Retry up to 3 times
         try:
+            print(f"Attempting to update bio...")
             response = requests.patch(url, json=data, headers=headers, timeout=10)
             if handle_rate_limit(response):
                 continue  # Retry if rate-limited
@@ -59,6 +62,9 @@ async def update_bot_status_and_bio():
             return  # Exit if bio update is successful
         except requests.exceptions.RequestException as e:
             print(f"Error updating bio: {e}")
+            time.sleep(5)  # Wait a bit before retrying
+        except Exception as e:
+            print(f"Unexpected error: {e}")
             break  # Stop retrying after failure
 
 @bot.event
@@ -122,6 +128,11 @@ async def on_message(message):
         # Silently ignore non-numeric messages
         pass
 
-# Run the bot
-load_dotenv()
-bot.run(os.getenv('DISCORD_TOKEN'))  # Use environment variable for the token
+# Run the bot (with Port Binding for Render)
+if __name__ == '__main__':
+    load_dotenv()
+
+    # Get port from environment variable for Render
+    port = int(os.getenv("PORT", 5000))  # Default to 5000 if not set
+
+    bot.run(os.getenv('DISCORD_TOKEN'))  # Run the bot with the provided token
