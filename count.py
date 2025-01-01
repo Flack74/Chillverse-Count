@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 import math
 import requests
 import time
+from flask import Flask
 
 # Intents
 intents = discord.Intents.default()
@@ -128,11 +129,18 @@ async def on_message(message):
         # Silently ignore non-numeric messages
         pass
 
-# Run the bot (with Port Binding for Render)
+# Create Flask web server to bind to Render's expected port
+app = Flask(__name__)
+
+@app.route('/')
+def index():
+    return 'Bot is running!'
+
+# Run the bot and the web server (Render expects a port)
 if __name__ == '__main__':
     load_dotenv()
 
     # Get port from environment variable for Render
     port = int(os.getenv("PORT", 5000))  # Default to 5000 if not set
-
-    bot.run(os.getenv('DISCORD_TOKEN'))  # Run the bot with the provided token
+    bot.loop.create_task(bot.start(os.getenv('DISCORD_TOKEN')))  # Run the bot
+    app.run(host='0.0.0.0', port=port)  # Start Flask server
