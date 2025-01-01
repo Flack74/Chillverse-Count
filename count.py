@@ -6,6 +6,7 @@ import math
 import requests
 import time
 from flask import Flask
+import asyncio
 
 # Intents
 intents = discord.Intents.default()
@@ -137,10 +138,13 @@ def index():
     return 'Bot is running!'
 
 # Run the bot and the web server (Render expects a port)
-if __name__ == '__main__':
+async def main():
     load_dotenv()
 
     # Get port from environment variable for Render
     port = int(os.getenv("PORT", 5000))  # Default to 5000 if not set
-    bot.loop.create_task(bot.start(os.getenv('DISCORD_TOKEN')))  # Run the bot
+    await bot.start(os.getenv('DISCORD_TOKEN'))  # Run the bot
     app.run(host='0.0.0.0', port=port)  # Start Flask server
+
+if __name__ == '__main__':
+    asyncio.run(main())  # Use asyncio to run the main async function
